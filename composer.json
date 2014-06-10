@@ -1,4 +1,7 @@
 {
+    "name": "neton/jsloader",
+    "description": "A JavaScript dinamic loader service to Silex.",
+    "keywords": ["assets", "dinamic", "silex","loading"],
     "require": {
         "silex/silex": "1.1",
         "symfony/filesystem": "2.5.*@dev",
