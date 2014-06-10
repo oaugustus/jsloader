@@ -8,6 +8,6 @@
         "symfony/finder": "2.3.*"
     },
     "autoload": {
-        "psr-0": { "": "src/"}
+        "psr-0": { "JsLoader": "src/"}
     }
 }
