@@ -1,4 +1,4 @@
 jsloader
 ========
 
-JavaScript automatic loader and optimizer for Silex
+JavaScript automatic loader and optimizer for Silex.
