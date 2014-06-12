@@ -5,7 +5,8 @@
     "require": {
         "silex/silex": "1.1",
         "symfony/filesystem": "2.5.*@dev",
-        "symfony/finder": "2.3.*"
+        "symfony/finder": "2.3.*",
+        "tedivm/jshrink": "~1.0"
     },
     "autoload": {
         "psr-0": { "JsLoader": "src/"}

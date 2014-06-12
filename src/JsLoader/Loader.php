@@ -2,6 +2,7 @@
 namespace JsLoader;
 
 use Symfony\Component\Finder\Finder;
+use JShrink\Minifier;
 
 class Loader
 {
@@ -85,7 +86,7 @@ class Loader
             if ($this->debug) {
                 echo $include;
             } else {
-                file_put_contents($this->webDir."/".$this->deployDir.$buildFileName,JSMin::minify($include));
+                file_put_contents($this->webDir."/".$this->deployDir.$buildFileName,Minifier::minify($include));
 
                 printf("<script type='text/javascript' src='%s%s'></script>\n",$this->deployDir,$buildFileName);
 
