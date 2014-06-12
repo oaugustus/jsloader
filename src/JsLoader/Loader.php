@@ -78,7 +78,7 @@ class Loader
                     if ($this->debug) {
                         $include.= sprintf("<script type='text/javascript' src='%s%s'></script>\n",$path, $script);
                     } else {
-                        @$include.= file_get_contents($this->webDir."/".$path.$script);
+                        @$include.= "\n".file_get_contents($this->webDir."/".$path.$script);
                     }
                 }
             }
