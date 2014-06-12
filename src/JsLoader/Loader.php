@@ -78,7 +78,7 @@ class Loader
                     if ($this->debug) {
                         $include.= sprintf("<script type='text/javascript' src='%s%s'></script>\n",$path, $script);
                     } else {
-                        @$include.= file_get_contents($this->webDir."/".$path.$script);
+                        @$include.= "\n".file_get_contents($this->webDir."/".$path.$script);
                     }
                 }
             }
@@ -107,13 +107,11 @@ class Loader
     protected function buildScriptList($paramKey)
     {
         $def = $this->defs[$paramKey];
-
         if (isset($def['module'])){
-            $list = $this->buildModuleList($def);
+            $list = $this->buildModuleList($def, $paramKey);
         } else {
             $list = $this->buildVendorsList($def['libs']);
         }
-
         return $list;
     }
 
@@ -121,10 +119,11 @@ class Loader
      * Retorna a lista de scripts para módulos.
      *
      * @param array $def
+     * @param string $paramsKey
      *
      * @return array
      */
-    private function buildModuleList($def)
+    private function buildModuleList($def, $paramsKey)
     {
         $finder = new Finder();
         $list = array();
@@ -132,9 +131,8 @@ class Loader
         if (!isset($def['exclude'])){
             $def['exclude'] = array();
         }
-
-        foreach ($finder->in($this->sourceDir)->files()->name('main.js') as $module){
-            $list += $this->mountModuleScripts($module->getRelativePath());
+        foreach ($finder->in($def['path'])->files()->name('main.js') as $module){
+            $list += $this->mountModuleScripts($module->getPathInfo(), $paramsKey);
         };
 
         return $list;
@@ -145,22 +143,22 @@ class Loader
      *
      * @param $dir
      */
-    private function mountModuleScripts($module)
+    private function mountModuleScripts($module, $paramsKey)
     {
         $finder = new Finder();
 
         $scripts = array();
-        $dir = $this->sourceDir."/".$module.'/';
+        $dir = $module.'/';
         $files = $finder->files()->in($dir)->name('*.js');
 
         $main = '';
-        $scripts[$module][] = &$main;
+        $scripts[$paramsKey][] = &$main;
 
         foreach ($files as $file){
             if ($file->getFilename() == 'main.js'){
                 $main = $file->getRelativePath().$file->getFilename();
             } else {
-                $scripts[$module][] = $file->getRelativePath()."/".$file->getFilename();
+                $scripts[$paramsKey][] = $file->getRelativePath()."/".$file->getFilename();
             }
         }
 
