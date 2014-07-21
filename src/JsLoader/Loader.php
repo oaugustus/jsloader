@@ -1,6 +1,7 @@
 <?php
 namespace JsLoader;
 
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 use JShrink\Minifier;
 
@@ -12,6 +13,8 @@ class Loader
     protected $defs = array();
     protected $debug;
     protected $scripts = array();
+
+    private $moduleList = array();
 
     /**
      * Inicializa o loader de scripts.
@@ -40,11 +43,11 @@ class Loader
     public function load($module)
     {
         $paramKey = 'jsloader.'.$module;
+        $this->moduleList = array();
 
         if (!isset($this->defs[$paramKey])) {
             throw new \Exception('O módulo '.$module.' não foi definido no JsLoader!');
         } else {
-
             return $this->generateJs($paramKey);
         }
 
@@ -61,11 +64,12 @@ class Loader
     {
         $key = explode('.',$paramKey);
         $buildFileName = end($key).".build.js";
-        $buildFileFullname = $this->webDir."/".$buildFileName;
+        $buildFileFullname = $this->deployDir."/".$buildFileName;
 
         if (!$this->debug && file_exists($buildFileFullname)) {
-            printf("<script type='text/javascript' src='%s'></script>\n","./".$buildFileName);
+            printf("<script type='text/javascript' src='%s'></script>\n","./".$this->deployDir.$buildFileName);
         } else {
+
             $scripts = $this->buildScriptList($paramKey);
 
             $include = '';
@@ -75,10 +79,11 @@ class Loader
                 foreach ($list as $script){
                     $script = str_replace('\\','/', $script);
                     $path = $this->defs[$paramKey]['path'];
+                    $script = str_replace($path,'',$script);
                     if ($this->debug) {
                         $include.= sprintf("<script type='text/javascript' src='%s%s'></script>\n",$path, $script);
                     } else {
-                        @$include.= "\n".file_get_contents($this->webDir."/".$path.$script);
+                        @$include.= "\n".file_get_contents($this->webDir."/".$path.$script)."\n";
                     }
                 }
             }
@@ -107,8 +112,10 @@ class Loader
     protected function buildScriptList($paramKey)
     {
         $def = $this->defs[$paramKey];
-        if (isset($def['module'])){
+
+        if (isset($def['module'])) {
             $list = $this->buildModuleList($def, $paramKey);
+            $list = array('module' => $list);
         } else {
             $list = $this->buildVendorsList($def['libs']);
         }
@@ -125,17 +132,76 @@ class Loader
      */
     private function buildModuleList($def, $paramsKey)
     {
-        $finder = new Finder();
+        $fs = new Filesystem();
+        $mainFile = $def['path']."/main.js";
         $list = array();
 
-        if (!isset($def['exclude'])){
-            $def['exclude'] = array();
+        // verifica se existe o arquivo main no diretório informado
+        if (!$fs->exists($mainFile)) {
+            throw new \Exception("Não foi encontrado um script 'main.js' para o módulo '$paramsKey'");
         }
-        foreach ($finder->in($def['path'])->files()->name('main.js') as $module){
-            $list += $this->mountModuleScripts($module->getPathInfo(), $paramsKey);
-        };
+
+        $this->moduleList[$def['path']] = $this->findSubmodules($def['path']);
+
+        foreach ($this->moduleList as $module => $excludes) {
+            $list = array_merge($list, $this->getScriptList($module, $excludes));
+        }
 
         return $list;
+    }
+
+    /**
+     * Recupera a lista de scripts associado a um determinado módulo.
+     *
+     * @param string $path
+     * @param array  $excludes
+     *
+     * @return array
+     */
+    private function getScriptList($path, $excludes)
+    {
+        $finder = new Finder();
+
+        $files = $finder->files()->in($path)->name('*.js')->exclude($excludes);
+        $list = array();
+
+        $main = $path."/main.js";
+        $list[] = str_replace("//","/",$main);
+
+        foreach ($files as $script) {
+            if ($script->getFilename() != 'main.js') {
+                $list[] = $path."/".$script->getRelativePath()."/".$script->getFilename();
+            }
+
+        }
+
+        return $list;
+    }
+
+    /**
+     * Localiza e monta os submódulos de um módulo.
+     *
+     * @param $path
+     *
+     * @return array
+     */
+    private function findSubmodules($path)
+    {
+        $finder = new Finder();
+        $fs = new Filesystem();
+        $modulesDir = array();
+
+        foreach ($finder->in($path)->directories()->depth('==0') as $directory) {
+            $dir = $directory->getPath()."/".$directory->getFilename();
+
+
+            if ($fs->exists($dir."/main.js")) {
+                $this->moduleList[$dir] =  $this->findSubmodules($dir);
+                $modulesDir[] = $directory->getFilename();
+            }
+        }
+
+        return $modulesDir;
     }
 
     /**
@@ -165,7 +231,6 @@ class Loader
         return $scripts;
 
     }
-
 
     /**
      * Retorna a lista de scripts para bibliotecas vendors.
